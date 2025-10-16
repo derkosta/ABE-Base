@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: abe-portal-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: abeportal
+      POSTGRES_USER: abeportal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - abe-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U abeportal -d abeportal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: abe-portal-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - abe-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: abe-portal-backend
+    restart: unless-stopped
+    environment:
+      # Database
+      POSTGRES_DSN: postgresql+psycopg://abeportal:${POSTGRES_PASSWORD:-secure_password_change_me}@db:5432/abeportal
+      REDIS_URL: redis://redis:6379/0
+      
+      # Security
+      JWT_SECRET: ${JWT_SECRET:-change_this_to_a_secure_random_string_at_least_32_chars}
+      
+      # Paperless-ngx Integration
+      PAPERLESS_BASE_URL: ${PAPERLESS_BASE_URL:-http://paperless:8000}
+      PAPERLESS_API_TOKEN: ${PAPERLESS_API_TOKEN:-your_paperless_api_token}
+      
+      # Upload Settings
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-50}
+      ENABLE_STANDALONE_OCR: ${ENABLE_STANDALONE_OCR:-false}
+      
+      # Rate Limiting
+      RATE_LIMIT_LOGIN_PER_MIN: ${RATE_LIMIT_LOGIN_PER_MIN:-10}
+      RATE_LIMIT_SEARCH_PER_MIN: ${RATE_LIMIT_SEARCH_PER_MIN:-60}
+      RATE_LIMIT_DOWNLOAD_PER_MIN: ${RATE_LIMIT_DOWNLOAD_PER_MIN:-60}
+      
+      # Admin Bootstrap (Optional)
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      
+      # CORS
+      ALLOWED_ORIGINS: http://localhost:3000,https://localhost:3000
+      ALLOWED_HOSTS: localhost,127.0.0.1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - abe-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: abe-portal-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_BASE_URL: http://backend:8000
+      PUBLIC_PORTAL_BASE_URL: ${PUBLIC_PORTAL_BASE_URL:-http://localhost:3000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - abe-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  abe-network:
+    driver: bridge
