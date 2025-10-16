@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: abeportal
       POSTGRES_USER: abeportal
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -69,8 +69,8 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       
       # CORS
-      ALLOWED_ORIGINS: http://localhost:3000,https://localhost:3000
-      ALLOWED_HOSTS: localhost,127.0.0.1
+      ALLOWED_ORIGINS: http://localhost:3000,https://localhost:3000,https://abeportal.skynet6.synology.me
+      ALLOWED_HOSTS: localhost,127.0.0.1,abeportal.skynet6.synology.me
     depends_on:
       db:
         condition: service_healthy
@@ -126,7 +126,7 @@ services:
       "
     environment:
       POSTGRES_DSN: postgresql+psycopg://abeportal:${POSTGRES_PASSWORD:-secure_password_change_me}@db:5432/abeportal
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_change_me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
     depends_on:
       db:
         condition: service_healthy
