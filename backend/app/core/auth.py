@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.models.user import User, UserRole
 
 # Password hashing
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT token scheme
 security = HTTPBearer(auto_error=False)
