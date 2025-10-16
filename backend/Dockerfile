@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq5 \
     libpq-dev \
+    postgresql-client \
     libffi-dev \
     libjpeg62-turbo-dev \
     zlib1g-dev \
